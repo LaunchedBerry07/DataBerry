@@ -1,11 +1,18 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "CommonJS",
     "outDir": "../dist/server",
-    "strict": true,
+    "lib": ["ESNext"],
+    "target": "ESNext",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "strict": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
   },
-  "include": ["./**/*"]
+  "include": ["./"],
+  "exclude": ["node_modules", "dist"]
 }
