@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -36,57 +37,52 @@ app.use((req, res, next) => {
                                                                                             next();
                                                                                             });
 
-                                                                                            (async () => {
-                                                                                              const server = await registerRoutes(app);
+(async () => {
+  try {
+    const server = await registerRoutes(app);
 
-                                                                                                app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-                                                                                                    const status = err.status || err.statusCode || 500;
-                                                                                                        const message = err.message || "Internal Server Error";
+    // importantly only setup vite in development and after
+    // setting up all the other routes so the catch-all route
+    // doesn't interfere with the other routes
+    if (app.get('env') === 'development') {
+      await setupVite(app, server);
+    } else {
+      serveStatic(app);
+    }
 
-                                                                                                            res.status(status).json({ message });
-                                                                                                                throw err;
-                                                                                                                  });
+    // Error handler should be the last middleware
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || 'Internal Server Error';
 
-                                                                                                                    // importantly only setup vite in development and after
-                                                                                                                      // setting up all the other routes so the catch-all route
-                                                                                                                        // doesn't interfere with the other routes
-                                                                                                                          if (app.get("env") === "development") {
-                                                                                                                              await setupVite(app, server);
-                                                                                                                                } else {
-                                                                                                                                    serveStatic(app);
-                                                                                                                                      }
+      log(`Error: ${err.message}`, "error");
+      console.error(err.stack); // Log the full stack trace for debugging
+      res.status(status).json({ message });
+    });
 
-                                                                                                                                        // This line is being updated to use the environment variable
-                                                                                                                                          const port = parseInt(process.env.PORT || '8080', 10);
-                                                                                                                                            server.listen({
-                                                                                                                                                port,
-                                                                                                                                                    host: "0.0.0.0",
-                                                                                                                                                        reusePort: true,
-                                                                                                                                                          }, () => {
-                                                                                                                                                              log(`serving on port ${port}`);
-                                                                                                                                                                });
-                                                                                                                                                                })();
-                                                                                                                                                                  
-                                                                                                                                                                    // Add graceful shutdown for production environments
-                                                                                                                                                                      process.on('SIGTERM', () => {
-                                                                                                                                                                          console.log('SIGTERM signal received: closing HTTP server');
-                                                                                                                                                                              server.close(() => {
-                                                                                                                                                                                    console.log('HTTP server closed');
-                                                                                                                                                                                          process.exit(0);
-                                                                                                                                                                                              });
-                                                                                                                                                                                                });
+    const port = parseInt(process.env.PORT || '8080', 10);
 
-                                                                                                                                                                                                  server.listen({
-                                                                                                                                                                                                      port,
-                                                                                                                                                                                                          host: "0.0.0.0",
-                                                                                                                                                                                                              reusePort: true,
-                                                                                                                                                                                                                }, () => {
-                                                                                                                                                                                                                    log(`serving on port ${port}`);
-                                                                                                                                                                                                                        
-                                                                                                                                                                                                                            // For Google Cloud Run, also log readiness
-                                                                                                                                                                                                                                if (process.env.NODE_ENV === 'production') {
-                                                                                                                                                                                                                                      console.log(`Server is ready and listening on 0.0.0.0:${port}`);
-                                                                                                                                                                                                                                            console.log(`Health check available at http://0.0.0.0:${port}/api/health`);
-                                                                                                                                                                                                                                                }
-                                                                                                                                                                                                                                                  });
-                                                                                                                                                                                                                            
+    // Add graceful shutdown for production environments
+    process.on('SIGTERM', () => {
+      log('SIGTERM signal received: closing HTTP server', 'lifecycle');
+      server.close(() => {
+        log('HTTP server closed', 'lifecycle');
+        process.exit(0);
+      });
+    });
+
+    server.listen({ port, host: '0.0.0.0', reusePort: false }, () => {
+      log(`serving on port ${port}`);
+
+      // For Google Cloud Run, also log readiness
+      if (process.env.NODE_ENV === 'production') {
+        console.log(`Server is ready and listening on 0.0.0.0:${port}`);
+        console.log(`Health check available at http://0.0.0.0:${port}/api/health`);
+      }
+    });
+  } catch (err: any) {
+    log(`Failed to start server: ${err.message}`, 'startup');
+    console.error(err.stack);
+    process.exit(1);
+  }
+})();
