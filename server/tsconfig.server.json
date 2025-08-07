@@ -9,11 +9,11 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
+    "baseUrl": "..",
     "paths": {
-      "@shared/*": ["../shared/*"]
+      "@shared/*": ["shared/*"]
     }
   },
-  "include": ["./"],
+  "include": ["server"],
   "exclude": ["node_modules", "dist"]
 }
