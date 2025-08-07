@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import express, { type Request, ResponsResponseextFunction } from "express";
+import express, { Express, Request, ResponsResponseextFunction } from 'express';
 import { registerRoutes } from "./routes.js";
 import { setupVite, serveStatic, log } from "./vite.js";
 
